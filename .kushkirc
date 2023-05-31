@@ -1,0 +1,13 @@
+{
+  "errorPrefix": "undefined",
+  "json2ts":{
+    "output": "./types",
+    "remote": [
+      ],
+    "dirs": [
+      "src/schema"
+    ]
+  },
+  "ssm": {
+  }
+}

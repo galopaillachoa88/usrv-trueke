@@ -1,0 +1,145 @@
+service: usrv-trueke
+
+provider:
+  name: aws
+  runtime: nodejs16.x
+  architecture: arm64
+  stage: ${env:USRV_STAGE}
+  timeout: 29
+  logRetentionInDays: ${file(ServerlessScripts.js):logRetentionInDays.${env:USRV_STAGE}}
+  stackTags: ${self:custom.kushkiTag}
+  environment:
+    INIT_TIMEOUT: 29
+    USRV_STAGE: ${self:provider.stage}
+    USRV_NAME: ${self:service}
+    USRV_COMMIT: ${env:USRV_COMMIT}
+    USRV_BRANCH: ${env:USRV_BRANCH}
+    ROLLBAR_TOKEN: ${ssm.${file(ServerlessScripts.js):awsRegion.${env:USRV_STAGE}}:${self:custom.prefix}/ROLLBAR_TOKEN}
+    SSM_REGION: ${file(ServerlessScripts.js):awsRegion.${env:USRV_STAGE}}
+    DYNAMO_TRANSACTION: ${self:resources.Resources.transactions.Properties.TableName}
+  iamRoleStatements:
+    - Effect: "Allow"
+      Action:
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+      Resource:
+        - Fn::GetAtt:
+            - transactions
+            - Arn
+    - Effect: "Allow"
+      Action:
+        - ssm:GetParameter
+        - ssm:GetParameters
+        - ssm:GetParametersByPath
+      Resource: "*"
+custom:
+  prefix: /${self:provider.stage}/${self:service}
+  version: v1
+  prune:
+    automatic: true
+    number: 3
+  esbuild:
+    minify: false
+    sourcemap: linked
+    keepNames: true
+    external:
+      - esprima
+      - jsonpath
+  tagEnv:
+    ci: TESTING
+    qa: TESTING
+    po: TESTING
+    uat: TESTING
+    stg: TESTING
+    primary: PRODUCTION
+  enabled:
+    ci: true
+    qa: true
+    po: true
+    uat: true
+    stg: false
+    primary: false
+  deploymentSettings:
+    stages:
+      - ci
+      - qa
+      - po
+      - stg
+      - uat
+      - primary
+    type: ${file(ServerlessScripts.js):canaryDeploymentType.${env:USRV_STAGE}}
+    alias: Live
+  apigwBinary:
+    types:
+      - "text/plain"
+  alerts:
+    dashboards: true
+  kushkiTag:
+    COST: BY TRANSACTION
+    SERVICE: TRUEKESERVICE
+    INTEGRATION: KUSHKI
+    ENVIRONMENT: ${self:custom.tagEnv.${self:provider.stage}}
+  dynamoTag:
+    - Key: ENVIRONMENT
+      Value: ${self:custom.tagEnv.${self:provider.stage}}
+    - Key: INTEGRATION
+      Value: KUSHKI
+    - Key: SERVICE
+      Value: STARTER
+    - Key: COST
+      Value: FIXED
+  cloudWatchLogsTags: ${self:custom.kushkiTag}
+
+plugins:
+  - serverless-offline
+  - serverless-prune-plugin
+  - serverless-cloudformation-resource-counter
+  - serverless-tag-cloud-watch-logs
+  - serverless-plugin-canary-deployments
+  - serverless-esbuild
+
+package:
+  individually: true
+  excludeDevDependencies: true
+  exclude:
+    - "src/handler/*.LICENSE"
+  patterns:
+    - "!local/**"
+    - "!.vscode/**"
+    - "!node_modules/**/**.md"
+    - "!node_modules/**/test/**"
+    - "!node_modules/**/LICENSE"
+    - "!node_modules/**/LICENCE"
+    - "!node_modules/**/License"
+    - "!node_modules/**/license"
+    - "!node_modules/**/Makefile"
+    - "!node_modules/**/**.ts"
+    - "!node_modules/**/package-lock.json"
+    - "!node_modules/**/aws-sdk/**"
+    - "!./yarn.*"
+    - "!./**.md"
+    - "!./package.json"
+    - "!./package-lock.json"
+
+functions:
+  hello:
+    handler: src/handler/HelloHandler.HANDLER
+    deploymentSettings: ${self:custom.deploymentSettings}
+
+resources:
+  Resources:
+    transactions:
+      Type: "AWS::DynamoDB::Table"
+      Properties:
+        TableName: ${self:provider.stage}-${self:service}-transactions
+        AttributeDefinitions:
+          - AttributeName: transactionReference
+            AttributeType: S
+        KeySchema:
+          - AttributeName: transactionReference
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+        StreamSpecification:
+          StreamViewType: NEW_AND_OLD_IMAGES
+        Tags: ${self:custom.dynamoTag}

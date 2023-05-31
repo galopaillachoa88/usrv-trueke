@@ -1,0 +1,39 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "allowJs": true,
+    "pretty": true,
+    "moduleResolution": "node",
+    "noImplicitAny": false,
+    "strictPropertyInitialization": true,
+    "esModuleInterop": false,
+    "strictNullChecks": true,
+    "strict": true,
+    "target": "es2017",
+    "lib": ["es2017", "dom"],
+    "sourceMap": true,
+    "alwaysStrict": true,
+    "baseUrl": ".",
+    "types": ["mocha", "node", "reflect-metadata"],
+    "experimentalDecorators": true,
+    "allowSyntheticDefaultImports": true,
+    "emitDecoratorMetadata": true,
+    "noStrictGenericChecks": true,
+    "forceConsistentCasingInFileNames": true,
+    "diagnostics": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noErrorTruncation": true,
+    "skipLibCheck": true,
+    "paths": {
+      "handler/*": ["src/handler/*"],
+      "constant/*": ["src/constant/*"],
+      "gateway/*": ["src/gateway/*"],
+      "infrastructure/*": ["src/infrastructure/*"],
+      "repository/*": ["src/repository/*"],
+      "service/*": ["src/service/*"],
+      "types/*": ["types/*"]
+    }
+  },
+  "exclude": ["node_modules"]
+}
